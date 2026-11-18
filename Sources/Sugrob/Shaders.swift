@@ -1264,4 +1264,32 @@ fragment float4 pumpkinFragment(PumpkinOut in [[stage_in]], texture2d<float> she
     float halo = u.lantern.w * 0.3 * flame * exp(-dot(d, d));
     return color + float4(candle * halo, halo) * (1.0 - color.a);
 }
+
+struct PictureUniforms {
+    float2 anchor;
+    float2 size;
+    float angle;
+    float alpha;
+};
+
+/// A snowman's part or the plow: a picture standing on its bottom middle, turned about it; a negative width mirrors it.
+vertex SignOut pictureVertex(uint vid [[vertex_id]], constant PictureUniforms &s [[buffer(0)]], constant Uniforms &u [[buffer(1)]]) {
+    float2 corner = float2(float(vid & 1), float(vid >> 1));
+    float2 local = float2((corner.x - 0.5) * s.size.x, corner.y * s.size.y);
+    float2 world = s.anchor + float2(local.x * cos(s.angle) - local.y * sin(s.angle), local.x * sin(s.angle) + local.y * cos(s.angle));
+    SignOut out;
+    out.position = float4((world + u.shake.xy) / u.viewSize * 2.0 - 1.0, 0.0, 1.0);
+    out.uv = float2(corner.x, 1.0 - corner.y);
+    out.world = world;
+    return out;
+}
+
+fragment float4 pictureFragment(SignOut in [[stage_in]], texture2d<float> picture [[texture(0)]],
+                                constant PictureUniforms &s [[buffer(0)]], constant Uniforms &u [[buffer(1)]]) {
+    constexpr sampler smooth(filter::linear, mip_filter::linear, address::clamp_to_edge);
+    // A little sharper than the mipmaps alone: the pictures are drawn crisp, at the display's full resolution.
+    float4 color = picture.sample(smooth, in.uv, bias(-0.5)) * s.alpha;
+    color.rgb *= u.light.rgb;
+    return color;
+}
 """

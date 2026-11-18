@@ -1,5 +1,4 @@
-/* Snowhush's words, one file per language. The Mac app ships each as <language>.lproj/Localizable.strings;
-   the Windows and Linux apps build them in through snowhush-core. Every file has every key of en.strings. */
+/* The app's menu and welcome texts; build.sh ships each file as the app's .lproj table. */
 
 "intensity" = "Intensity";
 "opacity" = "Opacity";
@@ -33,8 +32,6 @@
 "screenshots" = "Show in Screenshots";
 "performance" = "Max Performance";
 "login" = "Open at Login";
-"updates" = "Check for Updates…";
-"support" = "Support Snowhush";
 "quit" = "Quit";
 
 /* Clear Snow, for what lies about: rain never does. */
@@ -46,30 +43,20 @@
 "clear.autumn.blossom" = "Clear Leaves and Petals";
 
 /* The welcome card; its title stays in English everywhere, and its button is shown in capitals. */
-"welcome.mac" = "Snowhush lives in the menu bar. Click the snowflake to change the snowfall, let the drift melt, or keep the snow behind your windows. Sweep it aside with your cursor.";
-"welcome.windows" = "Snowhush lives in the system tray. Click its icon to change the snowfall, let the drift melt, or keep the snow off your windows. Sweep it aside with your cursor.";
+"welcome.mac" = "Sugrob lives in the menu bar. Click the snowflake to change the snowfall, let the drift melt, or keep the snow behind your windows. Sweep it aside with your cursor.";
 "welcome.start" = "Get Started";
 
 /* Windows' own update check. */
-"update.ask" = "Snowhush {version} is available. You have {current}.\n\nDownload it now?";
-"update.available" = "Snowhush {version} is available";
-"update.click" = "Click to download it.";
-"update.latest" = "You're up to date.\n\nSnowhush {current} is the latest version.";
-"update.failed" = "Couldn't check for updates.";
 "shortcut" = "Snow on your desktop";
 
 /* Windows' installer card; its title and buttons are shown in capitals. */
-"setup.fresh" = "Version {version}. Installs just for you, without administrator rights.";
-"setup.install" = "Install";
-"setup.newer" = "Updates Snowhush {old} to {version}. Your settings stay as they are.";
-"setup.update" = "Update";
-"setup.same" = "Snowhush {old} is already here. Installing {version} again repairs it.";
-"setup.reinstall" = "Reinstall";
-"setup.older" = "Replaces Snowhush {old} with the older {version}.";
-"setup.downgrade" = "Downgrade";
-"setup.installing" = "Installing…";
-"setup.settle" = "Let it settle.";
-"setup.done" = "Snowhush is installed. You'll find it in the Start menu.";
-"setup.open" = "Open Snowhush";
-"setup.failed" = "Couldn't install: {error}.";
-"setup.retry" = "Try Again";
+
+"snowman.build" = "Build a Snowman";
+"snowman.hint" = "Push the pointer through the drift to roll a snowball, then onto another";
+"plow.call" = "Call the Snowplow";
+"plow.level" = "Snowplow";
+"plow.never" = "Never";
+"plow.every3" = "Every 3 Minutes";
+"plow.every5" = "Every 5 Minutes";
+"plow.every10" = "Every 10 Minutes";
+"plow.note" = "Sooner in heavy snow, later in light";

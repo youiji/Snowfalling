@@ -34,6 +34,13 @@ struct PumpkinUniforms {
     var seed: Float
 }
 
+struct PictureUniforms {
+    var anchor: SIMD2<Float>
+    var size: SIMD2<Float>
+    var angle: Float
+    var alpha: Float
+}
+
 struct SignUniforms {
     var anchor: SIMD2<Float>
     var size: SIMD2<Float>
@@ -73,6 +80,15 @@ final class Renderer: NSObject, MTKViewDelegate {
     private let pilePipeline: MTLRenderPipelineState
     private let signPipeline: MTLRenderPipelineState
     private let pumpkinPipeline: MTLRenderPipelineState
+    private let picturePipeline: MTLRenderPipelineState
+    /// The snowmen's and the plow's pictures, drawn the first time each is needed.
+    private var pictures: [PictureSprite.Kind: MTLTexture] = [:]
+    /// Snowmen and the plow are drawn at the display's full resolution, in a strip along the bottom of the overlay
+    /// just as tall as they reach: the snow is soft enough for one pixel per point, their outlines are not.
+    private var pictureLayer: CAMetalLayer?
+    private var pictureHeight: CGFloat = 0
+    private var picturesShown = false
+    private weak var hostView: MTKView?
     /// Drops on the glass: their bumps added up into a field, and the glass drawn from it.
     private let fieldPipeline: MTLRenderPipelineState
     private let glassPipeline: MTLRenderPipelineState
@@ -105,13 +121,14 @@ final class Renderer: NSObject, MTKViewDelegate {
         self.pilePipeline = pipelines.pile
         self.signPipeline = pipelines.sign
         self.pumpkinPipeline = pipelines.pumpkin
+        self.picturePipeline = pipelines.picture
         self.glassPipeline = pipelines.glass
         self.fieldPipeline = pipelines.field
         super.init()
     }
 
     private struct Pipelines {
-        let sprite, pile, sign, pumpkin, glass, field: MTLRenderPipelineState
+        let sprite, pile, sign, pumpkin, picture, glass, field: MTLRenderPipelineState
     }
 
     private struct PipelineKey: Hashable {
@@ -156,6 +173,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             pile: pipeline("pileVertex", "pileFragment"),
             sign: pipeline("signVertex", "signFragment"),
             pumpkin: pipeline("pumpkinVertex", "pumpkinFragment"),
+            picture: pipeline("pictureVertex", "pictureFragment"),
             glass: pipeline("glassVertex", "glassFragment"),
             field: device.makeRenderPipelineState(descriptor: field)
         )
@@ -192,6 +210,11 @@ final class Renderer: NSObject, MTKViewDelegate {
     func releaseFrames(of view: MTKView) {
         guard view.drawableSize != Self.released else { return }
         field = nil
+        // The sharp strip goes altogether, and comes back with the next snowman or plow.
+        pictureLayer?.removeFromSuperlayer()
+        pictureLayer = nil
+        pictureHeight = 0
+        picturesShown = false
         Self.resize(view, to: Self.released)
         clear(view)
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.handBack) { [weak self, weak view] in
@@ -228,6 +251,7 @@ final class Renderer: NSObject, MTKViewDelegate {
     }
 
     func draw(in view: MTKView) {
+        hostView = view
         let now = CACurrentMediaTime()
         let dt = lastTime > 0 ? Float(min(now - lastTime, 0.05)) : 1.0 / 60
         lastTime = now
@@ -342,6 +366,88 @@ final class Renderer: NSObject, MTKViewDelegate {
         }
         encoder.endEncoding()
         encodeDock(piles.filter(\.isDock), into: commandBuffer, uniforms: uniforms, heights: heightBuffer)
+        encodePictures(simulation.pictures, into: commandBuffer, uniforms: uniforms)
+    }
+
+    /// Draws the snowmen and the plow into their sharp strip, and clears it once after they are gone.
+    private func encodePictures(_ sprites: [PictureSprite], into commandBuffer: MTLCommandBuffer, uniforms: Uniforms) {
+        guard !sprites.isEmpty || picturesShown, let view = hostView, let host = view.layer else { return }
+        let layer = pictureLayer ?? makePictureLayer(on: host)
+        let scale = view.window?.backingScaleFactor ?? 2
+        // As tall as the highest of them reaches, turned or not, in steps so a growing snowman doesn't resize it often.
+        let top = sprites.map { CGFloat($0.anchor.y + max($0.size.y, abs($0.size.x))) }.max() ?? 0
+        let needed = sprites.isEmpty ? 1 : min(view.bounds.height, (max(top, 1) / 64).rounded(.up) * 64 + 32)
+        if needed > pictureHeight || needed < pictureHeight - 128 || (sprites.isEmpty && pictureHeight != 1) || layer.contentsScale != scale {
+            pictureHeight = needed
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            layer.contentsScale = scale
+            layer.frame = CGRect(x: 0, y: 0, width: view.bounds.width, height: needed)
+            layer.drawableSize = CGSize(width: view.bounds.width * scale, height: needed * scale)
+            CATransaction.commit()
+        }
+        guard let drawable = layer.nextDrawable() else { return }
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = drawable.texture
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].storeAction = .store
+        pass.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0)
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return }
+        var strip = uniforms
+        strip.viewSize = SIMD2(simulation.width, Float(pictureHeight))
+        drawPictures(sprites, with: encoder, uniforms: strip)
+        encoder.endEncoding()
+        commandBuffer.present(drawable)
+        picturesShown = !sprites.isEmpty
+    }
+
+    private func makePictureLayer(on host: CALayer) -> CAMetalLayer {
+        let layer = CAMetalLayer()
+        layer.device = device
+        layer.pixelFormat = .bgra8Unorm
+        layer.isOpaque = false
+        layer.framebufferOnly = true
+        // While the strip resizes, a frame of the other size stays pinned to the bottom instead of stretching.
+        layer.contentsGravity = .bottomLeft
+        layer.needsDisplayOnBoundsChange = false
+        layer.anchorPoint = .zero
+        host.addSublayer(layer)
+        pictureLayer = layer
+        return layer
+    }
+
+    private func drawPictures(_ sprites: [PictureSprite], with encoder: MTLRenderCommandEncoder, uniforms: Uniforms) {
+        guard !sprites.isEmpty else { return }
+        var uniforms = uniforms
+        encoder.setRenderPipelineState(picturePipeline)
+        encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
+        encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
+        for sprite in sprites {
+            guard let texture = picture(sprite.kind) else { continue }
+            var shape = PictureUniforms(anchor: sprite.anchor, size: sprite.size, angle: sprite.angle, alpha: sprite.alpha)
+            encoder.setVertexBytes(&shape, length: MemoryLayout<PictureUniforms>.stride, index: 0)
+            encoder.setFragmentBytes(&shape, length: MemoryLayout<PictureUniforms>.stride, index: 0)
+            encoder.setFragmentTexture(texture, index: 0)
+            encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
+        }
+    }
+
+    /// Drawn large and mipmapped: a snowball starts small and grows, and would shimmer otherwise.
+    private func picture(_ kind: PictureSprite.Kind) -> MTLTexture? {
+        if let texture = pictures[kind] { return texture }
+        guard let context = SnowArt.draw(kind), let data = context.data else { return nil }
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: context.width, height: context.height, mipmapped: true)
+        descriptor.usage = .shaderRead
+        guard let texture = device.makeTexture(descriptor: descriptor),
+              let commandBuffer = queue.makeCommandBuffer() else { return nil }
+        texture.replace(region: MTLRegionMake2D(0, 0, context.width, context.height), mipmapLevel: 0, withBytes: data, bytesPerRow: context.bytesPerRow)
+        guard let blit = commandBuffer.makeBlitCommandEncoder() else { return nil }
+        blit.generateMipmaps(for: texture)
+        blit.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        pictures[kind] = texture
+        return texture
     }
 
     /// Adds up the bumps of the drops on the glass into the field, as big as the frame drawn, for the glass to be drawn

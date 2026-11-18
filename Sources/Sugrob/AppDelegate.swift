@@ -1,9 +1,8 @@
 import AppKit
 import MetalKit
 import ServiceManagement
-import Sparkle
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, SPUStandardUserDriverDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var device: MTLDevice!
     private var screens: [ScreenSnow] = []
     private let displays = Displays()
@@ -24,6 +23,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, SPUSta
     private let surfacePicker = SurfacePicker()
     private var meltItem: NSMenuItem!
     private var clearItem: NSMenuItem!
+    private var snowmanItem: NSMenuItem!
+    private var plowItem: NSMenuItem!
+    private var plowEveryItems: [NSMenuItem] = []
+    /// Minutes between the plow's runs at a steady snowfall; zero for never.
+    private static let plowSchedule: [(minutes: Double, key: String)] = [(0, "plow.never"), (3, "plow.every3"), (5, "plow.every5"), (10, "plow.every10")]
     private var halloweenItem: NSMenuItem!
     private var mixedItem: NSMenuItem!
     private var modeItems: [(item: NSMenuItem, mode: Mode)] = []
@@ -38,16 +42,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, SPUSta
     private let screenshots = ScreenshotWatch()
     private var screenLocked = false
     private var sessionInactive = false
-    private var updater: SPUStandardUpdaterController!
     private var welcome: WelcomeController?
     private let power = PowerMonitor()
     private var halloweenTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        if AppMover.moveIfNeeded() {
-            NSApp.terminate(nil)
-            return
-        }
         Preferences.registerDefaults()
         guard let device = Self.lowPowerDevice() ?? MTLCreateSystemDefaultDevice() else {
             NSApp.terminate(nil)
@@ -65,7 +64,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, SPUSta
             return
         }
 
-        updater = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: self)
         statusItem = makeStatusItem()
         updateStatusIcon()
         refreshHalloween()
@@ -78,9 +76,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, SPUSta
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in self?.showWelcome() }
         }
     }
-
-    // A menu bar app has no Dock icon to badge, so update reminders are left to Sparkle's own gentle alerts.
-    var supportsGentleScheduledUpdateReminders: Bool { true }
 
     // MARK: - Displays
 
@@ -101,6 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, SPUSta
                 snow.halloween = halloween
                 snow.modes = Preferences.modes
                 snow.maxFrameRate = Preferences.maxPerformance
+                snow.simulation.yard.plowEvery = Float(Preferences.plowEvery)
                 snow.activityChanged = { [weak self] in self?.updateActivity() }
                 snow.apply(power.budget)
                 screens.append(snow)
@@ -180,25 +176,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, SPUSta
         surfacesItem.isHidden = true
         surfacePicker.toggled = { [unowned self] surface in toggle(surface) }
         menu.addItem(surfacesItem)
-        let modes = NSMenu()
-        modes.autoenablesItems = false
-        mixedItem = toggle(tr("mixed"), #selector(toggleMixed), to: modes)
-        modes.addItem(.separator())
-        modeItems = Mode.allCases.map { mode in
-            let item = toggle(tr(mode.key), #selector(chooseMode), to: modes)
-            (item.view as? MenuToggle)?.staysOpen = { Preferences.mixed }
-            return (item, mode)
-        }
-        modes.addItem(.separator())
-        halloweenItem = add(tr("halloween"), #selector(toggleHalloween), to: modes)
-        menu.addItem(withTitle: tr("mode"), action: nil, keyEquivalent: "").submenu = modes
         clearItem = add(tr("clear.snow"), #selector(clearSnow), to: menu)
+        menu.addItem(.separator())
+        snowmanItem = add(tr("snowman.build"), #selector(buildSnowman), to: menu)
+        let hint = menu.addItem(withTitle: tr("snowman.hint"), action: nil, keyEquivalent: "")
+        hint.view = Self.hintView(tr("snowman.hint"))
+        hint.isEnabled = false
+        plowItem = add(tr("plow.call"), #selector(callPlow), to: menu)
         menu.addItem(.separator())
         let settings = NSMenu()
         settings.autoenablesItems = false
         settings.addItem(.sectionHeader(title: tr("behavior")))
         meltItem = toggle(tr("melt.snow"), #selector(toggleMeltSnow), to: settings)
         deepInteractionItem = toggle(tr("deep"), #selector(toggleDeepInteraction), to: settings)
+        let schedule = NSMenu()
+        schedule.autoenablesItems = false
+        plowEveryItems = Self.plowSchedule.map { choice in
+            let item = add(tr(choice.key), #selector(choosePlowSchedule), to: schedule)
+            item.representedObject = choice.minutes
+            return item
+        }
+        schedule.addItem(.separator())
+        let note = schedule.addItem(withTitle: tr("plow.note"), action: nil, keyEquivalent: "")
+        note.isEnabled = false
+        settings.addItem(withTitle: tr("plow.level"), action: nil, keyEquivalent: "").submenu = schedule
         settings.addItem(.separator())
         settings.addItem(.sectionHeader(title: tr("display")))
         behindWindowsItem = toggle(tr("behind"), #selector(toggleBehindWindows), to: settings)
@@ -208,32 +209,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, SPUSta
         settings.addItem(.separator())
         settings.addItem(.sectionHeader(title: tr("general")))
         loginItem = toggle(tr("login"), #selector(toggleOpenAtLogin), to: settings)
-        let updates = settings.addItem(withTitle: tr("updates"), action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)), keyEquivalent: "")
-        updates.target = updater
         menu.addItem(withTitle: tr("settings"), action: nil, keyEquivalent: "").submenu = settings
-        add(tr("support"), #selector(openSponsors), to: menu).attributedTitle = Self.supportTitle
         menu.addItem(withTitle: tr("quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 
         item.menu = menu
         return item
     }
 
-    /// The site's sponsor heart, in its colour, ahead of the title: set as the item's image, the status menu doesn't
-    /// show it.
-    private static let supportTitle: NSAttributedString = {
-        let font = NSFont.menuFont(ofSize: 0)
-        let title = NSMutableAttributedString(string: tr("support"), attributes: [.font: font])
-        guard let heart = NSImage(systemSymbolName: "heart.fill", accessibilityDescription: nil)?
-            .withSymbolConfiguration(.init(pointSize: font.pointSize * 0.85, weight: .regular).applying(.init(paletteColors: [NSColor(srgbRed: 0.92, green: 0.51, blue: 0.51, alpha: 1)])))
-        else { return title }
-        heart.isTemplate = false
-        let attachment = NSTextAttachment()
-        attachment.image = heart
-        attachment.bounds = CGRect(x: 0, y: (font.capHeight - heart.size.height) / 2, width: heart.size.width, height: heart.size.height)
-        title.insert(NSAttributedString(string: "  ", attributes: [.font: font]), at: 0)
-        title.insert(NSAttributedString(attachment: attachment), at: 0)
-        return title
-    }()
+    /// The hint under Build a Snowman, small and grey, wrapped onto a second line rather than widening the menu.
+    private static func hintView(_ text: String) -> NSView {
+        let textWidth: CGFloat = 260
+        let label = NSTextField(wrappingLabelWithString: text)
+        label.font = NSFont.menuFont(ofSize: NSFont.smallSystemFontSize)
+        label.textColor = .secondaryLabelColor
+        let height = ceil(label.cell?.cellSize(forBounds: NSRect(x: 0, y: 0, width: textWidth, height: 1000)).height ?? 30)
+        let row = NSView(frame: NSRect(x: 0, y: 0, width: MenuToggle.titleX + textWidth + 14, height: height + 6))
+        label.frame = NSRect(x: MenuToggle.titleX, y: 3, width: textWidth, height: height)
+        row.autoresizingMask = .width
+        row.addSubview(label)
+        return row
+    }
 
     @discardableResult
     private func add(_ title: String, _ action: Selector, to menu: NSMenu) -> NSMenuItem {
@@ -256,8 +251,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, SPUSta
         opacityRow.summary = MenuSlider.percent(Preferences.fallingOpacity)
         opacityRow.fit(opacityItem.title, least: 0)
         let modes = Mode.allCases.filter(Preferences.modes.contains)
-        mixedItem.state = Preferences.mixed ? .on : .off
-        for (item, mode) in modeItems { item.state = modes.contains(mode) ? .on : .off }
+        snowmanItem.isEnabled = !surfaces.isEmpty
+        plowItem.isEnabled = !surfaces.isEmpty
+        for item in plowEveryItems { item.state = item.representedObject as? Double == Preferences.plowEvery ? .on : .off }
         // Rain neither heaps up nor lies about to clear away.
         let heaps = modes.filter { $0 != .rain }
         meltItem.isHidden = heaps.isEmpty
@@ -280,8 +276,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, SPUSta
         deepInteractionItem.state = Preferences.deepInteraction ? .on : .off
         deepInteractionItem.isEnabled = surfaces.contains(.windows)
         clearItem.isEnabled = screens.contains { $0.simulation.hasSnow || $0.simulation.spriteCount > 0 }
-        halloweenItem.state = Halloween.isWanted ? .on : .off
-        halloweenItem.isEnabled = modes == [.snow]
         maxPerformanceItem.state = Preferences.maxPerformance ? .on : .off
         behindWindowsItem.state = behindWindows ? .on : .off
         fullScreenItem.state = Preferences.showOverFullScreen ? .on : .off
@@ -327,6 +321,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, SPUSta
         for snow in screens { snow.simulation.blowAway(direction: direction, calm: calm) }
     }
 
+    /// Built on the display the pointer is on.
+    @objc private func buildSnowman() {
+        let mouse = NSEvent.mouseLocation
+        (screens.first { $0.window.frame.contains(mouse) } ?? screens.first)?.simulation.buildSnowman()
+    }
+
+    @objc private func callPlow() {
+        for snow in screens { snow.simulation.callPlow() }
+    }
+
+    @objc private func choosePlowSchedule(_ sender: NSMenuItem) {
+        guard let minutes = sender.representedObject as? Double else { return }
+        Preferences.plowEvery = minutes
+        for snow in screens { snow.simulation.yard.plowEvery = Float(minutes) }
+    }
+
     @objc private func toggleBehindWindows() {
         behindWindows.toggle()
         Preferences.behindWindows = behindWindows
@@ -346,10 +356,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, SPUSta
         }
     }
 
-    @objc private func openSponsors() {
-        NSWorkspace.shared.open(URL(string: "https://github.com/sponsors/mbezruchko")!)
-    }
-
     @objc private func toggleOpenAtLogin() {
         let service = SMAppService.mainApp
         do {
@@ -359,7 +365,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, SPUSta
                 try service.register()
             }
         } catch {
-            NSLog("Snowhush: login item change failed: \(error)")
+            NSLog("Sugrob: login item change failed: \(error)")
         }
     }
 
@@ -421,7 +427,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, SPUSta
 
     private static func icon(halloween: Bool, dimmed: Bool) -> NSImage? {
         let image = halloween ? Halloween.icon : Preferences.mode == .blossom ? Blossom.icon
-            : NSImage(systemSymbolName: Self.symbol[Preferences.mode] ?? "snowflake", accessibilityDescription: "Snowhush")
+            : NSImage(systemSymbolName: Self.symbol[Preferences.mode] ?? "snowflake", accessibilityDescription: "Sugrob")
         guard dimmed, let image else { return image }
         // Dimmed by hand: the button's appearsDisabled also disables the slider in its menu, so Off could not be left.
         let faded = NSImage(size: image.size, flipped: false) { rect in

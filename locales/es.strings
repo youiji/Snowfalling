@@ -29,8 +29,6 @@
 "screenshots" = "Mostrar en capturas";
 "performance" = "Rendimiento máximo";
 "login" = "Abrir al iniciar sesión";
-"updates" = "Buscar actualizaciones…";
-"support" = "Apoyar a Snowhush";
 "quit" = "Salir";
 
 "clear.snow" = "Quitar la nieve";
@@ -40,28 +38,18 @@
 "clear.snow.blossom" = "Quitar la nieve y los pétalos";
 "clear.autumn.blossom" = "Quitar las hojas y los pétalos";
 
-"welcome.mac" = "Snowhush vive en la barra de menús. Haz clic en el copo para cambiar la nevada, dejar que la nieve acumulada se derrita o mantenerla detrás de tus ventanas. Apártala con el cursor.";
-"welcome.windows" = "Snowhush vive en la bandeja del sistema. Haz clic en su icono para cambiar la nevada, dejar que la nieve acumulada se derrita o mantenerla fuera de tus ventanas. Apártala con el cursor.";
+"welcome.mac" = "Sugrob vive en la barra de menús. Haz clic en el copo para cambiar la nevada, dejar que la nieve acumulada se derrita o mantenerla detrás de tus ventanas. Apártala con el cursor.";
 "welcome.start" = "Empezar";
 
-"update.ask" = "Snowhush {version} está disponible. Tienes la {current}.\n\n¿Descargarla ahora?";
-"update.available" = "Snowhush {version} está disponible";
-"update.click" = "Haz clic para descargarla.";
-"update.latest" = "Estás al día.\n\nSnowhush {current} es la versión más reciente.";
-"update.failed" = "No se pudo buscar actualizaciones.";
 "shortcut" = "Nieve en tu escritorio";
 
-"setup.fresh" = "Versión {version}. Se instala solo para ti, sin permisos de administrador.";
-"setup.install" = "Instalar";
-"setup.newer" = "Actualiza Snowhush {old} a la {version}. Tus ajustes se mantienen.";
-"setup.update" = "Actualizar";
-"setup.same" = "Snowhush {old} ya está aquí. Instalar de nuevo la {version} lo repara.";
-"setup.reinstall" = "Reinstalar";
-"setup.older" = "Sustituye Snowhush {old} por la {version}, más antigua.";
-"setup.downgrade" = "Revertir";
-"setup.installing" = "Instalando…";
-"setup.settle" = "Deja que se asiente.";
-"setup.done" = "Snowhush está instalado. Lo encontrarás en el menú Inicio.";
-"setup.open" = "Abrir Snowhush";
-"setup.failed" = "No se pudo instalar: {error}.";
-"setup.retry" = "Reintentar";
+
+"snowman.build" = "Hacer un muñeco de nieve";
+"snowman.hint" = "Pasa el puntero por la nieve para rodar una bola y súbela a otra";
+"plow.call" = "Llamar a la quitanieves";
+"plow.level" = "Quitanieves";
+"plow.never" = "Nunca";
+"plow.every3" = "Cada 3 minutos";
+"plow.every5" = "Cada 5 minutos";
+"plow.every10" = "Cada 10 minutos";
+"plow.note" = "Más a menudo con nevada fuerte, menos con suave";

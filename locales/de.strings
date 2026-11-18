@@ -29,8 +29,6 @@
 "screenshots" = "In Screenshots zeigen";
 "performance" = "Maximale Leistung";
 "login" = "Beim Anmelden öffnen";
-"updates" = "Nach Updates suchen …";
-"support" = "Snowhush unterstützen";
 "quit" = "Beenden";
 
 "clear.snow" = "Schnee entfernen";
@@ -40,28 +38,18 @@
 "clear.snow.blossom" = "Schnee und Blüten entfernen";
 "clear.autumn.blossom" = "Laub und Blüten entfernen";
 
-"welcome.mac" = "Snowhush wohnt in der Menüleiste. Klicke auf die Schneeflocke, um den Schneefall zu ändern, Schneewehen schmelzen zu lassen oder den Schnee hinter deinen Fenstern zu halten. Wisch ihn mit dem Mauszeiger beiseite.";
-"welcome.windows" = "Snowhush wohnt im Infobereich der Taskleiste. Klicke auf das Symbol, um den Schneefall zu ändern, Schneewehen schmelzen zu lassen oder den Schnee von deinen Fenstern fernzuhalten. Wisch ihn mit dem Mauszeiger beiseite.";
+"welcome.mac" = "Sugrob wohnt in der Menüleiste. Klicke auf die Schneeflocke, um den Schneefall zu ändern, Schneewehen schmelzen zu lassen oder den Schnee hinter deinen Fenstern zu halten. Wisch ihn mit dem Mauszeiger beiseite.";
 "welcome.start" = "Los geht's";
 
-"update.ask" = "Snowhush {version} ist verfügbar. Du hast {current}.\n\nJetzt herunterladen?";
-"update.available" = "Snowhush {version} ist verfügbar";
-"update.click" = "Zum Herunterladen klicken.";
-"update.latest" = "Alles aktuell.\n\nSnowhush {current} ist die neueste Version.";
-"update.failed" = "Die Suche nach Updates ist fehlgeschlagen.";
 "shortcut" = "Schnee auf deinem Desktop";
 
-"setup.fresh" = "Version {version}. Wird nur für dich installiert, ohne Administratorrechte.";
-"setup.install" = "Installieren";
-"setup.newer" = "Aktualisiert Snowhush {old} auf {version}. Deine Einstellungen bleiben erhalten.";
-"setup.update" = "Aktualisieren";
-"setup.same" = "Snowhush {old} ist schon da. {version} erneut zu installieren repariert es.";
-"setup.reinstall" = "Neu installieren";
-"setup.older" = "Ersetzt Snowhush {old} durch die ältere {version}.";
-"setup.downgrade" = "Zurückstufen";
-"setup.installing" = "Wird installiert …";
-"setup.settle" = "Lass ihn sich setzen.";
-"setup.done" = "Snowhush ist installiert. Du findest es im Startmenü.";
-"setup.open" = "Snowhush öffnen";
-"setup.failed" = "Installation fehlgeschlagen: {error}.";
-"setup.retry" = "Erneut versuchen";
+
+"snowman.build" = "Schneemann bauen";
+"snowman.hint" = "Mit dem Zeiger durch die Schneewehe fahren, um eine Kugel zu rollen, dann auf eine andere";
+"plow.call" = "Schneepflug rufen";
+"plow.level" = "Schneepflug";
+"plow.never" = "Nie";
+"plow.every3" = "Alle 3 Minuten";
+"plow.every5" = "Alle 5 Minuten";
+"plow.every10" = "Alle 10 Minuten";
+"plow.note" = "Bei starkem Schneefall öfter, bei leichtem seltener";

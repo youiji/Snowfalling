@@ -29,8 +29,6 @@
 "screenshots" = "在截图中显示";
 "performance" = "最高性能";
 "login" = "登录时打开";
-"updates" = "检查更新…";
-"support" = "支持 Snowhush";
 "quit" = "退出";
 
 "clear.snow" = "清除积雪";
@@ -40,28 +38,18 @@
 "clear.snow.blossom" = "清除积雪和花瓣";
 "clear.autumn.blossom" = "清除落叶和花瓣";
 
-"welcome.mac" = "Snowhush 住在菜单栏里。点按雪花即可改变降雪、让积雪融化，或把雪留在窗口后面。用指针把它拨开吧。";
-"welcome.windows" = "Snowhush 住在系统托盘里。点击它的图标即可改变降雪、让积雪融化，或不让雪落在窗口上。用光标把它拨开吧。";
+"welcome.mac" = "Sugrob 住在菜单栏里。点按雪花即可改变降雪、让积雪融化，或把雪留在窗口后面。用指针把它拨开吧。";
 "welcome.start" = "开始";
 
-"update.ask" = "Snowhush {version} 现已推出。你当前的版本是 {current}。\n\n现在下载吗？";
-"update.available" = "Snowhush {version} 现已推出";
-"update.click" = "点击即可下载。";
-"update.latest" = "已是最新版本。\n\nSnowhush {current} 是最新版本。";
-"update.failed" = "无法检查更新。";
 "shortcut" = "桌面上的雪";
 
-"setup.fresh" = "版本 {version}。仅为你安装，无需管理员权限。";
-"setup.install" = "安装";
-"setup.newer" = "将 Snowhush {old} 更新到 {version}。你的设置保持不变。";
-"setup.update" = "更新";
-"setup.same" = "Snowhush {old} 已安装。重新安装 {version} 可修复它。";
-"setup.reinstall" = "重新安装";
-"setup.older" = "将 Snowhush {old} 替换为较旧的 {version}。";
-"setup.downgrade" = "降级";
-"setup.installing" = "正在安装…";
-"setup.settle" = "让雪静静落下。";
-"setup.done" = "Snowhush 已安装。你可以在“开始”菜单中找到它。";
-"setup.open" = "打开 Snowhush";
-"setup.failed" = "无法安装：{error}。";
-"setup.retry" = "重试";
+
+"snowman.build" = "堆雪人";
+"snowman.hint" = "用指针在雪堆中移动即可滚出雪球，再把它推到另一个雪球上";
+"plow.call" = "叫扫雪车";
+"plow.level" = "扫雪车";
+"plow.never" = "从不";
+"plow.every3" = "每 3 分钟";
+"plow.every5" = "每 5 分钟";
+"plow.every10" = "每 10 分钟";
+"plow.note" = "大雪时更频繁，小雪时更少";

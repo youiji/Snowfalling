@@ -25,7 +25,7 @@ final class SceneLight {
     /// Read on the main thread only: a picture takes a quarter of a second to decode, so each is decoded once, off it.
     private static var tints: [Picture: SIMD4<Float>] = [:]
     private static var waiting: [Picture: [() -> Void]] = [:]
-    private static let decoder = DispatchQueue(label: "Snowhush.wallpaperTint", qos: .utility)
+    private static let decoder = DispatchQueue(label: "Sugrob.wallpaperTint", qos: .utility)
 
     func invalidate() {
         updatedAt = -.infinity
@@ -72,7 +72,7 @@ final class SceneLight {
     }
 
     private static func hour(at date: Date) -> Float {
-        // Lets the look at another time of day be previewed: defaults write com.mbezruchko.Snowhush previewHour -float 19
+        // Lets the look at another time of day be previewed: defaults write local.sugrob previewHour -float 19
         if UserDefaults.standard.object(forKey: "previewHour") != nil {
             return UserDefaults.standard.float(forKey: "previewHour")
         }

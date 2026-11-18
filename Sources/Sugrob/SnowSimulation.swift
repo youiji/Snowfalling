@@ -612,6 +612,8 @@ final class SnowSimulation {
     private var revengeAt: (layer: SnowLayer, x: Float)?
     private var snowballs: [(from: SIMD2<Float>, to: SIMD2<Float>, age: Float)] = []
     private var hitAt: Double = -10
+    /// Snowmen rolled out of the drift on the Dock or the ground, and the plow that clears it.
+    let yard = SnowYard()
 
     /// How far the whole scene is jolted, as if the screen it is on had been hit by a snowball.
     var shake: SIMD2<Float> {
@@ -675,16 +677,19 @@ final class SnowSimulation {
         )
         layers = [ground]
         updateTarget()
+        yard.release = { [unowned self] area, position, velocity in
+            release(area, at: position, velocity: velocity, spread: SIMD2(3, 3), scatter: 0.3)
+        }
     }
 
     var pileTop: Float { ground.top }
-    var hasSnow: Bool { !lying.isEmpty || layers.contains { $0.top > 0.5 } }
+    var hasSnow: Bool { !lying.isEmpty || !yard.snowmen.isEmpty || layers.contains { $0.top > 0.5 } }
     /// Nothing falls, lies, waits for its window or haunts, and nothing will until the snow is stirred.
     var isEmpty: Bool {
         intensity <= 0 && !halloween && flakes.isEmpty && grains.isEmpty && motes.isEmpty && ghosts.isEmpty
             && fallingSigns.isEmpty && snowballs.isEmpty && gust == nil && !dormant.values.contains { $0.ledge.top > 0 } && parking.isEmpty && lying.isEmpty && nextMode == nil
             && splashes.isEmpty && glassDrops.isEmpty && !wet
-            && !layers.contains { $0.top > 0 }
+            && !layers.contains { $0.top > 0 } && !yard.busy
     }
     /// Running drops or beads on the glass, drawn from a field of their own.
     var hasGlassDrops: Bool { glassDrops.contains { !$0.hanging } }
@@ -693,7 +698,7 @@ final class SnowSimulation {
     private(set) var glassReach: SIMD4<Float>?
     var spriteCount: Int {
         lying.count + flakes.count + grains.count + motes.count + ghosts.count * 2 + snowballs.count + splashes.count + glassDrops.count
-            + ledgeList.reduce(0) { $0 + $1.spray.count + $1.film.count }
+            + ledgeList.reduce(0) { $0 + $1.spray.count + $1.film.count } + yard.bits.count
     }
     /// Floats the renderer needs per frame: each layer's surface, bed and what it is made of.
     var columnCount: Int { layers.reduce(0) { $0 + SnowLayer.rows * $1.count } + borrowed.reduce(0) { $0 + $1.columns.count } }
@@ -710,11 +715,12 @@ final class SnowSimulation {
     func step(dt: Float, cursor point: SIMD2<Float>) -> Bool {
         clock += Double(dt)
         let wasMoving = !flakes.isEmpty || !grains.isEmpty || !motes.isEmpty || !ghosts.isEmpty || !fallingSigns.isEmpty || !snowballs.isEmpty
-            || !splashes.isEmpty || !glassDrops.isEmpty || wet
+            || !splashes.isEmpty || !glassDrops.isEmpty || wet || yard.busy
         heightsChanged = false
         leafBudget = nil
 
         releaseScattered()
+        placeYard()
         slideWind = abs(slideWind) < 1 ? 0 : slideWind * exp(-dt / slideCalm)
         expireParking()
         for ledge in ledgeList { carry(ledge, dt: dt) }
@@ -731,6 +737,8 @@ final class SnowSimulation {
         tendGlass(dt: dt)
         haunt(dt: dt)
         settle(dt: dt)
+        let falling = snowfallHeld ? 0 : intensity
+        if yard.step(dt: dt, cursor: cursor ?? point, cursorVelocity: cursorVelocity, intensity: falling) { heightsChanged = true }
         tendLeaves(dt: dt)
         if let next = nextMode, gust == nil, grains.isEmpty || clock - switchedAt > 6 {
             nextMode = nil
@@ -746,7 +754,7 @@ final class SnowSimulation {
         // Only a cursor that actually displaces snow needs the full rate; one passing near it or resting in it changes nothing.
         let pushed = clock - lastWindowMotion < 0.6 || clock - lastCursorPush < 0.3 || gust != nil || !snowballs.isEmpty || clock - hitAt < 0.6
         // The steady trickle off window corners is a few tiny grains at a time; they read fine at the calm rate.
-        let flying = grains.count > 24 || clock < scatteredUntil || abs(slideWind) > 20
+        let flying = grains.count > 24 || clock < scatteredUntil || abs(slideWind) > 20 || yard.plow != nil
         if pushed {
             pace = .interactive
         } else if flying {
@@ -756,6 +764,7 @@ final class SnowSimulation {
         }
         let changed = wasMoving || !flakes.isEmpty || !grains.isEmpty || !motes.isEmpty || !ghosts.isEmpty || !fallingSigns.isEmpty || !snowballs.isEmpty
             || !splashes.isEmpty || !glassDrops.isEmpty || wet || heightsChanged || windowsChanged || pumpkinsMoved || restyled || borrowedChanged
+            || yard.busy
         restyled = false
         windowsChanged = false
         borrowedChanged = false
@@ -877,7 +886,9 @@ final class SnowSimulation {
             count += 1
             if !drop.hanging {
                 let speed = simd_length(sprite.velocity)
-                let reach = max(sprite.size, 1.5) * 1.1 + min(speed * 0.08, sprite.size * 0.9) + speed * 0.024 + 1
+                let body: Float = max(sprite.size, 1.5) * 1.1
+                let streak: Float = min(speed * 0.08, sprite.size * 0.9)
+                let reach: Float = body + streak + speed * 0.024 + 1
                 let bounds = SIMD4(lowHalf: sprite.position - reach, highHalf: sprite.position + reach)
                 glassReach = glassReach.map { SIMD4(lowHalf: simd_min($0.lowHalf, bounds.lowHalf), highHalf: simd_max($0.highHalf, bounds.highHalf)) } ?? bounds
             }
@@ -948,7 +959,34 @@ final class SnowSimulation {
             buffer[count] = Sprite(position: position, size: 7 + 145 * t * t, alpha: 1, soft: 0.12)
             count += 1
         }
-        return count
+        return yard.writeSprites(into: buffer, from: count, capacity: capacity)
+    }
+
+    // MARK: - Snowmen
+
+    var pictures: [PictureSprite] { yard.pictures }
+
+    /// Snowmen stand on the snow on the Dock, and the plow drives along it; without a Dock that collects snow, on the
+    /// ground at the bottom of the screen.
+    private func placeYard() {
+        let dock = layers.first { $0.isDock && $0.width > 240 }
+        if let dock {
+            yard.use(dock, span: dock.base.x...(dock.base.x + dock.width), onDock: true, bottom: ground, screenWidth: width)
+        } else {
+            yard.use(ground, span: 0...width, onDock: false, bottom: ground, screenWidth: width)
+        }
+        yard.active = modes.contains(.snow) && accumulates && (dock != nil || groundSettles)
+    }
+
+    func buildSnowman() {
+        yard.buildSnowman()
+        heightsChanged = true
+        stirred()
+    }
+
+    func callPlow() {
+        yard.callPlow()
+        stirred()
     }
 
     var signs: [SignSprite] {
@@ -1727,6 +1765,8 @@ final class SnowSimulation {
         let speed = simd_length(velocity)
         if speed > 3000 { velocity *= 3000 / speed }
         cursorVelocity += (velocity - cursorVelocity) * 0.5
+        // Pushing a snowball along, or packing one, the pointer gathers the snow instead of sweeping it aside.
+        if yard.claims(center, velocity: cursorVelocity) { return }
 
         let low = min(center.y, previous.y) - cursorRadius
         let high = max(center.y, previous.y) + cursorRadius
@@ -3200,6 +3240,7 @@ final class SnowSimulation {
     /// or, `calm`, it melts away where it lies.
     func blowAway(direction: Float, calm: Bool) {
         gust = (clock, direction < 0 ? -1 : 1, calm)
+        yard.knockAll(direction: direction < 0 ? -1 : 1)
         // Snow kept for windows on other Spaces goes too, out of sight.
         dormant.removeAll()
         for entry in parking {

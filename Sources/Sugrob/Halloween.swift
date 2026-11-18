@@ -4,7 +4,7 @@ import AppKit
 /// turned on from the menu.
 enum Halloween {
     /// Whether it is Halloween, wanted or not.
-    /// Lets it be previewed on any day: defaults write com.mbezruchko.Snowhush previewHalloween -bool true
+    /// Lets it be previewed on any day: defaults write local.sugrob previewHalloween -bool true
     static func isSeason(at date: Date = Date()) -> Bool {
         if UserDefaults.standard.bool(forKey: "previewHalloween") { return true }
         let parts = Calendar.current.dateComponents([.month, .day, .hour], from: date)
@@ -17,7 +17,8 @@ enum Halloween {
     }
 
     /// Whether the snow is spooky: Halloween wanted, and snow falling, not leaves or rain.
-    static var isOn: Bool { isWanted && Preferences.modes == [.snow] }
+    /// Left out of this build, which keeps to plain snow.
+    static var isOn: Bool { false }
 
     /// Turned on in season, Halloween ends with the season; any other day, it stays on.
     static func toggle() {
@@ -70,7 +71,7 @@ enum Halloween {
             return true
         }
         image.isTemplate = true
-        image.accessibilityDescription = "Snowhush"
+        image.accessibilityDescription = "Sugrob"
         return image
     }()
 }

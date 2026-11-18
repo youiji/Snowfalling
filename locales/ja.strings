@@ -29,8 +29,6 @@
 "screenshots" = "スクリーンショットに表示";
 "performance" = "最大パフォーマンス";
 "login" = "ログイン時に開く";
-"updates" = "アップデートを確認…";
-"support" = "Snowhushを支援";
 "quit" = "終了";
 
 "clear.snow" = "雪を消す";
@@ -40,28 +38,18 @@
 "clear.snow.blossom" = "雪と花びらを消す";
 "clear.autumn.blossom" = "葉と花びらを消す";
 
-"welcome.mac" = "Snowhushはメニューバーにいます。雪の結晶をクリックすると、降雪を変えたり、積もった雪を溶かしたり、雪をウインドウの後ろに隠したりできます。カーソルで払いのけることもできます。";
-"welcome.windows" = "Snowhushはシステムトレイにいます。アイコンをクリックすると、降雪を変えたり、積もった雪を溶かしたり、雪をウインドウに積もらせないようにしたりできます。カーソルで払いのけることもできます。";
+"welcome.mac" = "Sugrobはメニューバーにいます。雪の結晶をクリックすると、降雪を変えたり、積もった雪を溶かしたり、雪をウインドウの後ろに隠したりできます。カーソルで払いのけることもできます。";
 "welcome.start" = "はじめる";
 
-"update.ask" = "Snowhush {version}が利用可能です。現在のバージョンは{current}です。\n\n今すぐダウンロードしますか？";
-"update.available" = "Snowhush {version}が利用可能です";
-"update.click" = "クリックしてダウンロード。";
-"update.latest" = "最新の状態です。\n\nSnowhush {current}が最新バージョンです。";
-"update.failed" = "アップデートを確認できませんでした。";
 "shortcut" = "デスクトップに降る雪";
 
-"setup.fresh" = "バージョン{version}。管理者権限なしで、あなただけにインストールします。";
-"setup.install" = "インストール";
-"setup.newer" = "Snowhush {old}を{version}にアップデートします。設定はそのまま残ります。";
-"setup.update" = "アップデート";
-"setup.same" = "Snowhush {old}はすでにインストールされています。{version}を再インストールすると修復されます。";
-"setup.reinstall" = "再インストール";
-"setup.older" = "Snowhush {old}を古い{version}に置き換えます。";
-"setup.downgrade" = "ダウングレード";
-"setup.installing" = "インストール中…";
-"setup.settle" = "静かに積もらせて。";
-"setup.done" = "Snowhushをインストールしました。スタートメニューから開けます。";
-"setup.open" = "Snowhushを開く";
-"setup.failed" = "インストールできませんでした：{error}。";
-"setup.retry" = "再試行";
+
+"snowman.build" = "雪だるまを作る";
+"snowman.hint" = "ポインタで雪の中を動かすと雪玉ができ、別の雪玉に押し当てると上に乗ります";
+"plow.call" = "除雪車を呼ぶ";
+"plow.level" = "除雪車";
+"plow.never" = "しない";
+"plow.every3" = "3分ごと";
+"plow.every5" = "5分ごと";
+"plow.every10" = "10分ごと";
+"plow.note" = "大雪のときは早め、小雪のときは遅め";

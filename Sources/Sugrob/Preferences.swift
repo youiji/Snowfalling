@@ -39,6 +39,7 @@ enum Preferences {
     private static let autumnKey = "autumn"
     private static let performanceKey = "performance"
     private static let fallingOpacityKey = "fallingOpacity"
+    private static let plowEveryKey = "plowEvery"
 
     static func registerDefaults() {
         let calm = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
@@ -171,8 +172,14 @@ enum Preferences {
         set { defaults.set(newValue.map(\.rawValue), forKey: mixKey) }
     }
 
-    /// What falls.
-    static var modes: [Mode] { mixed ? mix : [mode] }
+    /// What falls: only snow. Leaves, rain and petals are left out of this build.
+    static var modes: [Mode] { [.snow] }
+
+    /// Minutes between the snowplow's runs at a steady snowfall; zero for never.
+    static var plowEvery: Double {
+        get { defaults.object(forKey: plowEveryKey) as? Double ?? 5 }
+        set { defaults.set(newValue, forKey: plowEveryKey) }
+    }
 
     /// How opaque snow, leaves and rain are while they fall.
     static var fallingOpacity: Double {
